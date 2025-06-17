@@ -16,10 +16,9 @@ gpt = GPT(
 wx = WeChat()
 # 指定监听目标
 listen_list = [
-    '张三',
-    '李四',
-    '工作群A',
-    '工作群B'
+    '程宇白',
+    '白玉',
+
 ]
 for i in listen_list:
     wx.AddListenChat(who=i)  # 添加监听对象
