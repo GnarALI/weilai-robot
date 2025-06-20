@@ -4,7 +4,7 @@ from threading import Thread
 from utils.logger import get_logger  # 自定义日志模块
 from service.weilai.task import start_task  # 抢购任务主逻辑
 
-logger = get_logger()
+logger, success_logger = get_logger()
 
 
 def run_with_schedule(authorization_list: list[str], task_lines: list[str], run_time: str = None):

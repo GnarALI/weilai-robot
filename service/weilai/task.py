@@ -55,6 +55,7 @@ def send_request(data: dict):
     }
 
     for _ in range(loop_count):
+        print(f"[*][{data['phone']}]{data['name']}第 {_+1} 次请求")
         try:
             # 构造伪造 IP 头部
             fake_ip = generate_random_ipv4()

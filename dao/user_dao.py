@@ -36,6 +36,15 @@ class UserDao:
         self.cursor.execute(sql, (token, expire_time, phone,wx_name,))
         self.conn.commit()
 
+    def get_user_by_wx_name_dict(self, wx_name):
+        sql = 'SELECT * FROM user WHERE wx_name = ?'
+        self.cursor.execute(sql, (wx_name,))
+        row = self.cursor.fetchone()
+        if row:
+            columns = [desc[0] for desc in self.cursor.description]
+            return dict(zip(columns, row))
+        return None
+
     def delete_user_by_phone(self, phone):
         sql = 'DELETE FROM user WHERE phone = ?'
         self.cursor.execute(sql, (phone,))

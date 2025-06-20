@@ -32,20 +32,6 @@ def init_db():
         )
     ''')
 
-    # 创建 task 表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS task (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
-            item_name TEXT,
-            item_id TEXT,
-            buy_count INTEGER,
-            max_price REAL,
-            create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES user(id)
-        )
-    ''')
 
     conn.commit()
     conn.close()
