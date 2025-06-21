@@ -51,6 +51,7 @@ def get_wx_msg(wx_name, msg):
             # 3. 解析时间（支持 yyyy/MM/dd 格式）
             run_time_str = run_time_str.strip('"').strip()
             run_time = datetime.datetime.strptime(run_time_str, "%Y/%m/%d %H:%M:%S")
+            run_time_formatted = run_time.strftime("%Y-%m-%d %H:%M:%S")
 
             # 4. 获取用户信息
             user = user_dao.get_user_by_wx_name_dict(wx_name)
@@ -65,10 +66,11 @@ def get_wx_msg(wx_name, msg):
             authorization_list = [f"{phone}:{token}:{pay_pwd}"]
             task_lines = [f"{phone}-{name}-{count}" for name, count in task_dict.items()]
 
-            # 6. 启动抢购任务，传时间字符串（或你自己需要传 datetime）
-            trigger_weilai_task(authorization_list, task_lines, run_time_str)
 
-            return f"✅ 已为 {phone} 设置抢购任务，将在 {run_time_str} 执行"
+            # 6. 启动抢购任务，传时间字符串（或你自己需要传 datetime）
+            trigger_weilai_task(authorization_list, task_lines, run_time_formatted)
+
+            return f"✅ 已为 {phone} 设置抢购任务，将在 {run_time_formatted} 执行"
         except ValueError:
             return f"格式错误！请参考示例：\n{USER_COMMANDS}"
 

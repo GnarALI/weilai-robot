@@ -79,6 +79,7 @@ def send_request(data: dict):
 
             # 这几个状态码通常代表未成功锁单，跳过
             if response_json.get('code') in ['10', '0', '500']:
+                print(f"打印请求状态{response_json}")
                 continue
 
             process_response(data, response_json, request_header)
@@ -129,28 +130,46 @@ def process_response(data: dict, response_json: dict, request_header: dict):
 
 # 获取今日所有可抢藏品的名称、ID 和价格
 def get_today_price():
-    payload = {
-        "pageSize": 100,
-        "pageNum": 1,
-        "productType": "BUYOUT",
-        "collectionType": "2",
-        "museumId": "-3"
-    }
+    data = {"pageSize": 100, "pageNum": 1, "productType": "BUYOUT","collectionType":"2","museumId":"-3"}
     try:
-        response = requests.post(
-            "https://www.weilaiqiyuan.com/core/collection/public/search",
-            json=payload,
-            headers=headers
-        )
-        today_list = response.json()['data']['list']
-        for item in today_list:
-            detail = item['collectionDetailRes']
-            name_id[detail['name']] = detail['id']
-            name_price[detail['name']] = detail['currentDayMaxPrice']
-    except Exception as e:
-        logger.error(f"获取价格失败: {e}")
+        response = requests.post("https://www.weilaiqiyuan.com/core/collection/public/search", json=data, headers=headers)
+        response.raise_for_status()
+        # 解析响应为 JSON 格式
+        response_json = response.json()
+        today_list = response_json['data']['list']
+        # data_list = []
+        for i in today_list:
+
+            name_id[i['collectionDetailRes']['name']] = i['collectionDetailRes']['id']
+            name_price[i['collectionDetailRes']['name']] = i['collectionDetailRes']['currentDayMaxPrice']
+            # price_list.append({
+            #     "name": i['collectionDetailRes']['name'],
+            #     "id": i['collectionDetailRes']['id'],
+            #     "maxPrice": i['collectionDetailRes']['currentDayMaxPrice'],
+            # })
+            # data_e = {
+            #     "name": i['collectionDetailRes']['name'],
+            #     "id": i['collectionDetailRes']['id'],
+            #     "buyCount":3,
+            #     "maxPrice": i['collectionDetailRes']['currentDayMaxPrice'],
+            #     "authorization": authorization
+            # }
+            # print(data_e)
+            # data_list.append(data_e)
+        # print(f"请求成功，状态码: {response.status_code}, 响应内容: {response_json}")
+        # 这里可以添加对响应 JSON 数据的处理逻辑
+    except requests.exceptions.RequestException as e:
+        logger.error(f"请求出错: {e}")
         time.sleep(3)
-        get_today_price()  # 重试
+        get_today_price()
+    except ValueError as e:
+        logger.error(f"响应内容不是有效的 JSON 格式: {e}")
+        time.sleep(3)
+        get_today_price()
+    # logging.info(name_price)
+
+
+
 
 # 根据任务行数据生成可执行任务
 def generate_task(task_lines: list[str]) -> list[dict]:
