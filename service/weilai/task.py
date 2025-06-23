@@ -41,8 +41,6 @@ def send_request(data: dict):
         'id': '商品ID',
         'buyCount': '1',
         'maxPrice': '128.00',
-        'authorization': '用户Token',
-        'phone': '19912345678',
         'pwd': '支付密码'
     }
     """
@@ -80,9 +78,9 @@ def send_request(data: dict):
 
             # 这几个状态码通常代表未成功锁单，跳过
             if response_json.get('code') in ['10', '0', '500']:
-                print(f"[send_request]表未成功锁单{response_json}")
+                print(f"[send_request]未成功锁单{response_json}")
                 continue
-            print(f"[send_request]表成功锁单--{response_json}")
+            print(f"[send_request]----成功锁单----{response_json}")
             process_response(data, response_json, request_header)
 
 
@@ -96,7 +94,6 @@ def process_response(data: dict, response_json: dict, request_header: dict):
         order_no = response_json['data']['orderNo']
         success_logger.info(f"[+][{data['phone']}]{data['name']}锁单成功, 数量: {len(response_json['data']['childOrders'])}, 订单号: {order_no}")
         print(f"[process_response]锁单成功{response_json}")
-
         order(data, order_no, request_header)
     else:
         logger.info(f"[*][{data['phone']}]{data['name']}响应码: {response_json.get('code')}, 内容: {response_json}")
