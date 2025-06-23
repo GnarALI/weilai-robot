@@ -4,7 +4,8 @@ from threading import Thread
 from utils.logger import get_logger  # 自定义日志模块
 from service.weilai.task import start_task  # 抢购任务主逻辑
 
-logger, success_logger = get_logger()
+loggers = get_logger()
+main_log = loggers['main']
 
 
 def run_with_schedule(authorization_list: list[str], task_lines: list[str], run_time: str = None):
@@ -20,13 +21,13 @@ def run_with_schedule(authorization_list: list[str], task_lines: list[str], run_
             now = datetime.datetime.now()
             wait_seconds = (target_time - now).total_seconds()
             if wait_seconds > 0:
-                logger.info(f"[定时] 等待 {wait_seconds:.2f} 秒后启动抢购任务（目标时间：{run_time}）")
+                main_log.info(f"[定时] 等待 {wait_seconds:.2f} 秒后启动抢购任务（目标时间：{run_time}）")
                 time.sleep(wait_seconds)
             else:
-                logger.warning(f"[定时] 指定时间 {run_time} 已过，立即执行任务")
+                main_log.warning(f"[定时] 指定时间 {run_time} 已过，立即执行任务")
         start_task(authorization_list, task_lines)
     except Exception as e:
-        logger.error(f"[定时任务] 执行任务过程中发生异常: {e}")
+        main_log.error(f"[定时任务] 执行任务过程中发生异常: {e}")
 
 
 def trigger_weilai_task(auth_list, task_list, run_time):

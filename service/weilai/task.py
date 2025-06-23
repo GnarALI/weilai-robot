@@ -6,7 +6,11 @@ from utils.logger import get_logger  # 导入自定义日志工具
 from utils import request  #  utils/request.py 中统一管理
 
 # 初始化日志系统
-logger, success_logger = get_logger()
+loggers = get_logger()
+main_log = loggers['main']
+request_log = loggers['request']
+process_log = loggers['process']
+order_log = loggers['order']
 
 # 抢购请求接口地址
 url = "https://www.weilaiqiyuan.com/core/buyout_products/buy/order/bulk"
@@ -41,8 +45,6 @@ def send_request(data: dict):
         'id': '商品ID',
         'buyCount': '1',
         'maxPrice': '128.00',
-        'authorization': '用户Token',
-        'phone': '19912345678',
         'pwd': '支付密码'
     }
     """
@@ -55,7 +57,6 @@ def send_request(data: dict):
     }
 
     for _ in range(loop_count):
-        print(f"[*][send_request][{data['name']}-{data['id']}]第 {_+1} 次请求")
         try:
             # 构造伪造 IP 头部
             fake_ip = generate_random_ipv4()
@@ -72,35 +73,33 @@ def send_request(data: dict):
             response = requests.post(url, json=data_send, headers=request_header, timeout=30)
 
             if response.status_code != 200:
-                logger.error(f"[{data['phone']}]{data['name']}请求响应码异常: {response.status_code}, 内容: {response.text}")
-                print(f"[send_request]请求响应码异常{response}")
+                request_log.warning(f"[{data['phone']}]{data['name']}请求响应码异常: {response.status_code}, 内容: {response.text}")
                 continue
 
             response_json = response.json()
 
             # 这几个状态码通常代表未成功锁单，跳过
             if response_json.get('code') in ['10', '0', '500']:
-                print(f"[send_request]表未成功锁单{response_json}")
+                request_log.info(
+                    f"[{data['phone']}]{data['name']}请求响应码异常: {response.status_code}, 内容: {response.text}")
                 continue
-            print(f"[send_request]表成功锁单--{response_json}")
             process_response(data, response_json, request_header)
 
 
         except Exception as e:
-            logger.error(f"[{data['phone']}]请求异常: {e}")
+            request_log.error(f"[{data['phone']}]请求异常: {e}")
 
 
 # 处理锁单响应结果
 def process_response(data: dict, response_json: dict, request_header: dict):
+
+
     if response_json.get('code') == '200':
         order_no = response_json['data']['orderNo']
-        success_logger.info(f"[+][{data['phone']}]{data['name']}锁单成功, 数量: {len(response_json['data']['childOrders'])}, 订单号: {order_no}")
-        print(f"[process_response]锁单成功{response_json}")
-
+        process_log.info(f"[+][{data['phone']}]{data['name']}锁单成功, 数量: {len(response_json['data']['childOrders'])}, 订单号: {order_no}")
         order(data, order_no, request_header)
     else:
-        logger.info(f"[*][{data['phone']}]{data['name']}响应码: {response_json.get('code')}, 内容: {response_json}")
-        print(f"[process_response]锁单失败{response_json}")
+        process_log.warning(f"[*][{data['phone']}]{data['name']}响应码: {response_json.get('code')}, 内容: {response_json}")
 
 # 提交支付订单
 def order(data: dict, order_no: str, request_header: dict):
@@ -126,15 +125,15 @@ def order(data: dict, order_no: str, request_header: dict):
             response_json = response.json()
             print(f"[order]支付第 {_ + 1} 次尝试，响应：{response_json}")
             if response_json.get('code') == "200":
-                success_logger.info(f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}")
+                order_log.info(f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}")
                 print(f"支付成功{response_json}")
                 return
             else:
-                success_logger.warning(f"[-][{data['phone']}]{data['name']}支付失败, 订单号: {order_no}, 内容: {response_json}")
+                order_log.warning(f"[-][{data['phone']}]{data['name']}支付失败, 订单号: {order_no}, 内容: {response_json}")
                 print(f"[order]支付失败{response_json}")
                 return
         except Exception as e:
-            success_logger.error(f"[{data['phone']}]{data['name']}支付异常: {e}")
+            order_log.error(f"[{data['phone']}]{data['name']}支付异常: {e}")
             print(f"[order]支付异常{e}")
 
 
@@ -153,11 +152,11 @@ def get_today_price():
             name_id[i['collectionDetailRes']['name']] = i['collectionDetailRes']['id']
             name_price[i['collectionDetailRes']['name']] = i['collectionDetailRes']['currentDayMaxPrice']
     except requests.exceptions.RequestException as e:
-        logger.error(f"请求出错: {e}")
+        main_log.error(f"请求出错: {e}")
         time.sleep(3)
         get_today_price()
     except ValueError as e:
-        logger.error(f"响应内容不是有效的 JSON 格式: {e}")
+        main_log.error(f"响应内容不是有效的 JSON 格式: {e}")
         time.sleep(3)
         get_today_price()
     # logging.info(name_price)
@@ -220,8 +219,7 @@ def start_task(authorization_list: list[str], task_lines: list[str]):
 
     # 生成任务列表
     tasks = generate_task(task_lines)
-    logger.info(f"准备启动 {len(tasks)} 条任务")
-    print(f"准备启动 {len(tasks)} 条任务")
+    main_log.info(f"准备启动 {len(tasks)} 条任务")
 
     # 多线程并发执行
     threads = []
@@ -235,5 +233,4 @@ def start_task(authorization_list: list[str], task_lines: list[str]):
     for t in threads:
         t.join()
 
-    logger.info("[*] 所有请求完成。")
-    print("所有请求完成。")
+    main_log.info("[*] 所有请求完成。")

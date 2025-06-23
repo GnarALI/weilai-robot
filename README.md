@@ -27,13 +27,13 @@ weilai_robot/
 │   ├── task_dao.py              # 任务管理
 │   └── weilai.db               # db生成的数据库
 │
-├── service/                        # 数据目录（如日志、token、缓存等）
+├── service/                      # 数据目录（如日志、token、缓存等）
 │   ├── weilai/
 │   │   ├── login.py              #未来登录脚本
-│   │   └── task.py                #未来任务脚本，后续应该还要拆分
-│   └── wx/                         # 微信监控操作目录
-│       ├── opration.py              #监控信息作出操作
-│       └── wechat.py                #微信监控
+│   │   └── task.py               #未来任务脚本，后续应该还要拆分
+│   └── wx/                       # 微信监控操作目录
+│       ├── opration.py           #监控信息作出操作
+│       └── wechat.py              #微信监控
 │
 ├── utils/                       # 工具类（如日志、网络请求封装、加解密）
 │   ├── request.py              # 请求
