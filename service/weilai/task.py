@@ -11,6 +11,9 @@ main_log = loggers['main']
 request_log = loggers['request']
 process_log = loggers['process']
 order_log = loggers['order']
+success_log = loggers['success']
+
+
 
 # 抢购请求接口地址
 url = "https://www.weilaiqiyuan.com/core/buyout_products/buy/order/bulk"
@@ -22,7 +25,7 @@ headers = request.headers
 loop_count = 9999999
 
 # 每个任务开启的并发线程数量
-thread_count = 10
+thread_count = 1
 
 # 商品名称到 ID、价格的映射
 name_id = {}           # 例如：{'蛇来运转-Ⅰ代': '890123'}
@@ -114,7 +117,7 @@ def order(data: dict, order_no: str, request_header: dict):
         "pwd": data['pwd']
     }
 
-    for _ in range(20):  # 尝试最多支付 20 次
+    for _ in range(100):  # 尝试最多支付 100 次
         try:
             response = requests.post(
                 "https://www.weilaiqiyuan.com/core/buyout_products/pay/order",
@@ -123,18 +126,14 @@ def order(data: dict, order_no: str, request_header: dict):
                 timeout=3
             )
             response_json = response.json()
-            print(f"[order]支付第 {_ + 1} 次尝试，响应：{response_json}")
             if response_json.get('code') == "200":
-                order_log.info(f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}")
-                print(f"支付成功{response_json}")
+                success_log.info(f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}")
                 return
             else:
                 order_log.warning(f"[-][{data['phone']}]{data['name']}支付失败, 订单号: {order_no}, 内容: {response_json}")
-                print(f"[order]支付失败{response_json}")
                 return
         except Exception as e:
             order_log.error(f"[{data['phone']}]{data['name']}支付异常: {e}")
-            print(f"[order]支付异常{e}")
 
 
 
