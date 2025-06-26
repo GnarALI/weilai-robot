@@ -54,7 +54,8 @@ def get_logger():
         'success': setup_logger("success_logger", "success.log"),
         'request': setup_logger("request_logger", "request.log"),
         'process': setup_logger("process_logger", "process.log"),
-        'order': setup_logger("order_logger", "order.log")
+        'order': setup_logger("order_logger", "order.log"),
+        'check_token': setup_logger("check_token_logger", "check_token.log")
     }
 
 # 使用实例
