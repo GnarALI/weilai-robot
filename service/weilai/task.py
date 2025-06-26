@@ -22,7 +22,7 @@ url = "https://www.weilaiqiyuan.com/core/buyout_products/buy/order/bulk"
 headers = request.headers
 
 # 配置：每个线程的请求次数（理论上为无限，直到任务成功或中断）
-loop_count = 9999999
+loop_count = 500
 
 # 每个任务开启的并发线程数量
 thread_count = 1
