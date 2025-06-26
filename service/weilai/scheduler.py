@@ -1,39 +1,41 @@
-import datetime
+# scheduler.py
 import time
-from threading import Thread
-from utils.logger import get_logger  # 自定义日志模块
-from service.weilai.task import start_task  # 抢购任务主逻辑
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from task_service import execute_user_task
+from database import get_pending_tasks
 
-loggers = get_logger()
-main_log = loggers['main']
+# 配置轮询间隔（秒）
+POLL_INTERVAL = 10
 
+# 最大线程池大小（全局控制）
+MAX_WORKERS = 3000
+executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
-def run_with_schedule(authorization_list: list[str], task_lines: list[str], run_time: str = None):
-    """
-    支持定时启动抢购任务
-    :param authorization_list: ['19912345678:token1:123456']
-    :param task_lines: ['19912345678-蛇来运转-1']
-    :param run_time: '2025-06-18 22:30:00'
-    """
-    try:
-        if run_time:
-            target_time = datetime.datetime.strptime(run_time, "%Y-%m-%d %H:%M:%S")
-            now = datetime.datetime.now()
-            wait_seconds = (target_time - now).total_seconds()
-            if wait_seconds > 0:
-                main_log.info(f"[定时] 等待 {wait_seconds:.2f} 秒后启动抢购任务（目标时间：{run_time}）")
-                time.sleep(wait_seconds)
-            else:
-                main_log.warning(f"[定时] 指定时间 {run_time} 已过，立即执行任务")
-        start_task(authorization_list, task_lines)
-    except Exception as e:
-        main_log.error(f"[定时任务] 执行任务过程中发生异常: {e}")
+def schedule_task(task):
+    now = datetime.now()
+    task_time = task['task_time']
+    delay = (task_time - now).total_seconds()
 
+    if delay > 0:
+        threading.Timer(delay, executor.submit, args=(execute_user_task, task)).start()
+    else:
+        executor.submit(execute_user_task, task)
 
-def trigger_weilai_task(auth_list, task_list, run_time):
-    """
-    用于外部触发定时抢购任务（例如微信指令触发）
-    """
-    t = Thread(target=run_with_schedule, args=(auth_list, task_list, run_time))
-    t.daemon = True  # 设置守护线程
-    t.start()
+def poll_tasks():
+    while True:
+        try:
+            now = datetime.now()
+            # 取出当前时间 ±60s 内，状态为"待执行"的任务
+            tasks = get_pending_tasks(within_seconds=60)
+            for task in tasks:
+                schedule_task(task)
+        except Exception as e:
+            print(f"[调度异常] {e}")
+
+        time.sleep(POLL_INTERVAL)
+
+if __name__ == "__main__":
+    print("[调度器] 启动任务轮询...")
+    poll_tasks()

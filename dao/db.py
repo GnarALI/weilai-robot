@@ -19,16 +19,16 @@ def init_db():
     # 创建 user 表
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user (
-            id TEXT PRIMARY KEY,
-            wx_name TEXT, 
-            phone TEXT, 
-            sms_code TEXT, 
-            pay_pwd TEXT,   
-            token TEXT,   
-            expire_time TEXT,
-            bind_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status INTEGER DEFAULT 0,
-            last_login TIMESTAMP
+            id TEXT PRIMARY KEY,           -- 用户唯一标识（比如 UUID）
+            wx_name TEXT,                  -- 微信昵称
+            phone TEXT UNIQUE,             -- 手机号
+            pay_pwd TEXT,                  -- 支付密码
+            token TEXT,                    -- 登录 token
+            expire_time TEXT,              -- token 过期时间
+            task TEXT,                     -- 抢购任务 JSON 字符串
+            task_time TEXT,                -- 任务执行时间（格式: yyyy/MM/dd HH:mm:ss）
+            task_status INTEGER DEFAULT 0, -- 任务状态（如: 0 未开始，1 进行中，100 已完成）
+            is_vip INTEGER DEFAULT 0       -- 是否是VIP用户（1 是，0 否）
         )
     ''')
 

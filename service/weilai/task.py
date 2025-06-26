@@ -13,27 +13,16 @@ process_log = loggers['process']
 order_log = loggers['order']
 success_log = loggers['success']
 
-
-
 # 抢购请求接口地址
 url = "https://www.weilaiqiyuan.com/core/buyout_products/buy/order/bulk"
 
 # 公共请求头（基础结构，后续每次请求前会附加 token 和伪造 IP）
 headers = request.headers
 
-# 配置：每个线程的请求次数（理论上为无限，直到任务成功或中断）
-loop_count = 500
-
-# 每个任务开启的并发线程数量
-thread_count = 1
-
 # 商品名称到 ID、价格的映射
 name_id = {}           # 例如：{'蛇来运转-Ⅰ代': '890123'}
 name_price = {}        # 例如：{'蛇来运转-Ⅰ代': '128.88'}
 
-# 手机号到 token（Authorization）、支付密码的映射
-phone_authorization = {}   # 例如：{'19912345678': 'eyJhbGci...'}
-phone_password = {}        # 例如：{'19912345678': '123456'}
 
 # 生成随机 IPv4 地址用于伪造请求来源
 def generate_random_ipv4():
@@ -58,8 +47,8 @@ def send_request(data: dict):
         "maxPrice": data['maxPrice'],
         "authorization": data['authorization']
     }
-
-    for _ in range(loop_count):
+    #请求 1000 次，失败后重试
+    for _ in range(1000):
         try:
             # 构造伪造 IP 头部
             fake_ip = generate_random_ipv4()
@@ -88,14 +77,11 @@ def send_request(data: dict):
                 continue
             process_response(data, response_json, request_header)
 
-
         except Exception as e:
             request_log.error(f"[{data['phone']}]请求异常: {e}")
 
-
 # 处理锁单响应结果
 def process_response(data: dict, response_json: dict, request_header: dict):
-
 
     if response_json.get('code') == '200':
         order_no = response_json['data']['orderNo']
@@ -160,76 +146,56 @@ def get_today_price():
         get_today_price()
     # logging.info(name_price)
 
-
-
-
-# 根据任务行数据生成可执行任务
-def generate_task(task_lines: list[str]) -> list[dict]:
-    """
-    task_lines 示例：
-    [
-        "19912345678-蛇来运转-1",
-        "18888888888-魔礼青-2"
-    ]
-    """
+def parse_tasks(task_lines: list[str]) -> list[dict]:
     tasks = []
     for line in task_lines:
-        phone, name, count = line.strip().split("-")
+        try:
+            phone, token, pwd, raw_json = line.strip().split("-", 3)
+            item_dict = eval(raw_json)
+            for name, count in item_dict.items():
+                name = {
+                    '蛇来运转': '蛇来运转-Ⅰ代',
+                    '魔礼青': '四大天王-魔礼青',
+                    '魔礼海': '四大天王-魔礼海',
+                    '魔礼红': '四大天王-魔礼红',
+                    '魔礼寿': '四大天王-魔礼寿',
+                    '龙': '屋脊兽·龙',
+                    '貔貅': '山海经·貔貅',
+                    '青鸾': '山海经·青鸾',
+                }.get(name, name)
 
-        # 商品名映射（支持简写）
-        name = {
-            '蛇来运转': '蛇来运转-Ⅰ代',
-            '魔礼青': '四大天王-魔礼青',
-            '魔礼海': '四大天王-魔礼海',
-            '魔礼红': '四大天王-魔礼红',
-            '魔礼寿': '四大天王-魔礼寿',
-            '龙': '屋脊兽·龙',
-            '貔貅': '山海经·貔貅',
-            '青鸾': '山海经·青鸾',
-        }.get(name, name)
-
-        if phone in phone_authorization:
-            task = {
-                "name": name,
-                "id": name_id.get(name, ""),
-                "buyCount": count,
-                "maxPrice": name_price.get(name, "99999"),
-                "authorization": phone_authorization[phone],
-                "phone": phone,
-                "pwd": phone_password.get(phone, '')
-            }
-            tasks.append(task)
+                task = {
+                    "name": name,
+                    "id": name_id.get(name, ""),
+                    "buyCount": count,
+                    "maxPrice": name_price.get(name, "99999"),
+                    "authorization": token,
+                    "phone": phone,
+                    "pwd": pwd,
+                }
+                tasks.append(task)
+        except Exception as e:
+            main_log.error(f"解析失败: {line}, 错误: {e}")
     return tasks
 
-# 启动所有任务
-def start_task(authorization_list: list[str], task_lines: list[str]):
-    """
-    :param authorization_list: ['19912345678:token1:123456', '18888888888:token2:888888']
-    :param task_lines: ['19912345678-蛇来运转-1', '18888888888-魔礼青-2']
-    """
-    # 加载手机号与 Token、支付密码
-    for auth in authorization_list:
-        phone, token, pwd = auth.strip().split(":")
-        phone_authorization[phone] = token
-        phone_password[phone] = pwd
 
-    # 获取当日可抢藏品信息
+from concurrent.futures import ThreadPoolExecutor
+
+def start_task(task_lines: list[str], max_workers: int = 20):
     get_today_price()
+    tasks = parse_tasks(task_lines)
+    main_log.info(f"共解析出 {len(tasks)} 条任务，最大线程数 {max_workers}")
 
-    # 生成任务列表
-    tasks = generate_task(task_lines)
-    main_log.info(f"准备启动 {len(tasks)} 条任务")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(send_request, task) for task in tasks]
+        for f in futures:
+            try:
+                f.result()
+            except Exception as e:
+                main_log.error(f"任务执行异常: {e}")
 
-    # 多线程并发执行
-    threads = []
-    for task in tasks:
-        for _ in range(thread_count):
-            t = threading.Thread(target=send_request, args=(task,))
-            threads.append(t)
-            t.start()
+    main_log.info("[*] 所有任务执行完毕")
 
-    # 等待所有线程结束
-    for t in threads:
-        t.join()
 
-    main_log.info("[*] 所有请求完成。")
+
+
