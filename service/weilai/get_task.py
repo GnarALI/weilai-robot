@@ -40,7 +40,7 @@ def get_today_price():
         get_task_log.error(f"响应内容不是有效的 JSON 格式: {e}")
         time.sleep(3)
         get_today_price()
-    get_task_log.info(name_price)
+    # get_task_log.info(name_price)
 
 
 # 根据数据库取得当日任务，和执行时间
@@ -57,7 +57,7 @@ def get_today_task_detail() -> list[dict]:
     for user in users:
         phone = user.get("phone")
         token = user.get("token")
-        pwd = user.get("pwd")
+        pwd = user.get("pay_pwd")
         is_vip = user.get("is_vip")
         task_time = user.get("task_time")
         task = user.get("task")  # json 字符串
@@ -66,7 +66,7 @@ def get_today_task_detail() -> list[dict]:
             continue
 
         # 拼接成统一格式：手机号-token-密码-任务时间-任务json
-        user_line = f"{phone}-{token}-{pwd}-{is_vip}-{task_time}-{task}"
+        user_line = f"{phone}-{pwd}-{is_vip}-{task_time}-{task}-{token}"
         user_lines.append(user_line)
 
     result = parse_tasks(user_lines)
@@ -84,7 +84,7 @@ def parse_tasks(task_lines: list[str]) -> list[dict]:
 
     for line in task_lines:
         try:
-            phone, token, pwd, is_vip, task_time,raw_json = line.strip().split("-", 5)
+            phone, pwd, is_vip, task_time,raw_json,token = line.strip().split("-", 5)
             item_dict = eval(raw_json)
 
             for name, count in item_dict.items():

@@ -6,9 +6,9 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'weilai.db')
 
 
 def get_connection():
-    """获取数据库连接"""
-    conn = sqlite3.connect(DB_PATH)
-    return conn
+
+    """获取数据库连接，允许跨线程"""
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 
 def init_db():

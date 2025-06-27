@@ -59,6 +59,7 @@ def get_logger():
         'get_task': setup_logger("get_task_logger", "get_task.log"),
         'wx_operation': setup_logger("wx_operation_logger", "wx_operation.log"),
         'wx_chat': setup_logger("wx_chat_logger", "wx_chat.log"),
+        'scheduler': setup_logger("scheduler_logger", "scheduler.log"),
     }
 
 # 使用实例

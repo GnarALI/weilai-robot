@@ -1,8 +1,8 @@
-# main.py
-
 from dao.db import init_db
 from utils.logger import get_logger
 from service.wx.wechat import WeChatService
+from service.weilai.scheduler import poll_tasks  # ✅ 导入你刚改名的调度模块
+import threading
 
 
 def banner():
@@ -23,10 +23,14 @@ def main():
     # 初始化数据库（创建表）
     init_db()
 
-    # 后续扩展：微信监听 / 定时任务 / 抢购模式等入口
+    # 启动调度器线程
+    threading.Thread(target=poll_tasks, daemon=True).start()
+
+    # poll_tasks()
+
+    # 启动微信服务监听
     wx_service = WeChatService(wait=3)
     wx_service.start()
-
 
 
 if __name__ == '__main__':

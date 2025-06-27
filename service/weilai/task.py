@@ -2,10 +2,11 @@ import time
 import requests
 import threading
 import random
-
-from service.wx.wechat import user_dao
+from dao.user_dao import UserDao
 from utils.logger import get_logger  # 导入自定义日志工具
 from utils import request  #  utils/request.py 中统一管理
+#初始化数据库
+user_dao = UserDao()
 
 # 初始化日志系统
 loggers = get_logger()
