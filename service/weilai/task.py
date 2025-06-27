@@ -2,6 +2,8 @@ import time
 import requests
 import threading
 import random
+
+from service.wx.wechat import user_dao
 from utils.logger import get_logger  # 导入自定义日志工具
 from utils import request  #  utils/request.py 中统一管理
 
@@ -19,10 +21,6 @@ url = "https://www.weilaiqiyuan.com/core/buyout_products/buy/order/bulk"
 # 公共请求头（基础结构，后续每次请求前会附加 token 和伪造 IP）
 headers = request.headers
 
-# 商品名称到 ID、价格的映射
-name_id = {}           # 例如：{'蛇来运转-Ⅰ代': '890123'}
-name_price = {}        # 例如：{'蛇来运转-Ⅰ代': '128.88'}
-
 
 # 生成随机 IPv4 地址用于伪造请求来源
 def generate_random_ipv4():
@@ -30,6 +28,8 @@ def generate_random_ipv4():
 
 # 发送下单请求（并伪造 IP）
 def send_request(data: dict):
+
+
     """
     data 示例结构:
     {
@@ -48,7 +48,7 @@ def send_request(data: dict):
         "authorization": data['authorization']
     }
     #请求 1000 次，失败后重试
-    for _ in range(1000):
+    for _ in range(500):
         try:
             # 构造伪造 IP 头部
             fake_ip = generate_random_ipv4()
@@ -113,7 +113,18 @@ def order(data: dict, order_no: str, request_header: dict):
             )
             response_json = response.json()
             if response_json.get('code') == "200":
-                success_log.info(f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}")
+                # 获取当前用户的成功任务记录
+                user = user_dao.get_user_by_phone(data['phone'])
+                # 如果已有成功任务记录，则拼接到当前记录中，否则只是记录当前任务
+                user_logs = f"[*][{data['phone']}]{data['name']}支付成功, 订单号: {order_no}"
+                # 如果之前有成功记录，拼接旧的记录
+                if user and user.get("success_task"):
+                    user_logs = f"{user['success_task']}\n{user_logs}"
+                # 记录日志
+                success_log.info(user_logs)
+                # 更新数据库中的成功任务记录
+                user_dao.update_success_task_by_phone(data['phone'], user_logs)
+                user_dao.update_task_status100_by_phone(data['phone'])
                 return
             else:
                 order_log.warning(f"[-][{data['phone']}]{data['name']}支付失败, 订单号: {order_no}, 内容: {response_json}")
@@ -123,78 +134,7 @@ def order(data: dict, order_no: str, request_header: dict):
 
 
 
-# 获取今日所有可抢藏品的名称、ID 和价格
-def get_today_price():
-    data = {"pageSize": 100, "pageNum": 1, "productType": "BUYOUT","collectionType":"2","museumId":"-3"}
-    try:
-        response = requests.post("https://www.weilaiqiyuan.com/core/collection/public/search", json=data, headers=headers)
-        response.raise_for_status()
-        # 解析响应为 JSON 格式
-        response_json = response.json()
-        today_list = response_json['data']['list']
-        # data_list = []
-        for i in today_list:
-            name_id[i['collectionDetailRes']['name']] = i['collectionDetailRes']['id']
-            name_price[i['collectionDetailRes']['name']] = i['collectionDetailRes']['currentDayMaxPrice']
-    except requests.exceptions.RequestException as e:
-        main_log.error(f"请求出错: {e}")
-        time.sleep(3)
-        get_today_price()
-    except ValueError as e:
-        main_log.error(f"响应内容不是有效的 JSON 格式: {e}")
-        time.sleep(3)
-        get_today_price()
-    # logging.info(name_price)
 
-def parse_tasks(task_lines: list[str]) -> list[dict]:
-    tasks = []
-    for line in task_lines:
-        try:
-            phone, token, pwd, raw_json = line.strip().split("-", 3)
-            item_dict = eval(raw_json)
-            for name, count in item_dict.items():
-                name = {
-                    '蛇来运转': '蛇来运转-Ⅰ代',
-                    '魔礼青': '四大天王-魔礼青',
-                    '魔礼海': '四大天王-魔礼海',
-                    '魔礼红': '四大天王-魔礼红',
-                    '魔礼寿': '四大天王-魔礼寿',
-                    '龙': '屋脊兽·龙',
-                    '貔貅': '山海经·貔貅',
-                    '青鸾': '山海经·青鸾',
-                }.get(name, name)
-
-                task = {
-                    "name": name,
-                    "id": name_id.get(name, ""),
-                    "buyCount": count,
-                    "maxPrice": name_price.get(name, "99999"),
-                    "authorization": token,
-                    "phone": phone,
-                    "pwd": pwd,
-                }
-                tasks.append(task)
-        except Exception as e:
-            main_log.error(f"解析失败: {line}, 错误: {e}")
-    return tasks
-
-
-from concurrent.futures import ThreadPoolExecutor
-
-def start_task(task_lines: list[str], max_workers: int = 20):
-    get_today_price()
-    tasks = parse_tasks(task_lines)
-    main_log.info(f"共解析出 {len(tasks)} 条任务，最大线程数 {max_workers}")
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(send_request, task) for task in tasks]
-        for f in futures:
-            try:
-                f.result()
-            except Exception as e:
-                main_log.error(f"任务执行异常: {e}")
-
-    main_log.info("[*] 所有任务执行完毕")
 
 
 

@@ -22,12 +22,21 @@ class UserDao:
     def get_user_by_wx_name(self, wx_name):
         sql = 'SELECT * FROM user WHERE wx_name = ?'
         self.cursor.execute(sql, (wx_name,))
-        return self.cursor.fetchone()
-    # 根据手机号查询用户
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+        columns = [desc[0] for desc in self.cursor.description]
+        return dict(zip(columns, row))
+
+    # 根据手机号查询用户，返回字典
     def get_user_by_phone(self, phone):
         sql = 'SELECT * FROM user WHERE phone = ?'
         self.cursor.execute(sql, (phone,))
-        return self.cursor.fetchone()
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+        columns = [desc[0] for desc in self.cursor.description]
+        return dict(zip(columns, row))
     # 根据微信名称更新用户支付密码
     def update_pay_pwd_by_wx_name(self, wx_name, pay_pwd):
         sql = 'UPDATE user SET pay_pwd = ? WHERE wx_name = ?'
@@ -77,6 +86,46 @@ class UserDao:
                 users.append(dict(zip(columns, row)))
 
         return users
+
+    # 根据手机号更新任务状态0未开始
+    def update_task_status0_by_phone(self, phone):
+        sql = 'UPDATE user SET status = 0 WHERE phone = ?'
+        self.cursor.execute(sql, (phone,))
+        self.conn.commit()
+
+    # 根据手机号更新任务状态 1进行中
+    def update_task_status1_by_phone(self, phone):
+        sql = 'UPDATE user SET status = 1 WHERE phone = ?'
+        self.cursor.execute(sql, (phone,))
+        self.conn.commit()
+
+     # 根据手机号更新任务状态 100已完成
+    def update_task_status100_by_phone(self, phone):
+        sql = 'UPDATE user SET status = 100 WHERE phone = ?'
+        self.cursor.execute(sql, (phone,))
+        self.conn.commit()
+
+    # 根据手机号更新成功任务
+    def update_success_task_by_phone(self, phone,success_task):
+        sql = 'UPDATE user SET success_task = ? WHERE phone = ?'
+        self.cursor.execute(sql, (success_task,phone))
+        self.conn.commit()
+
+    # 根据微信名称更新用户任务
+    def update_task_by_wx_name(self, wx_name, task):
+        sql = 'UPDATE user SET task = ? WHERE wx_name = ?'
+        self.cursor.execute(sql, (task,wx_name ))
+        self.conn.commit()
+
+    # 根据微信名称更新用户任务
+    def update_task_time_by_wx_name(self, wx_name, task_time):
+        sql = 'UPDATE user SET task_time = ? WHERE wx_name = ?'
+        self.cursor.execute(sql, (task_time, wx_name))
+        self.conn.commit()
+
+
+
+
 
 # date_str = "2025/06/26"
 # user_list = db.get_users_by_task_date(date_str)
