@@ -32,20 +32,22 @@ def check_login_token(phone: str, token: str, max_retries=3):
             response_json = response.json()
 
             if response_json.get('code') == '200':
+                # 获取钱包余额
+                balance = response_json.get("data", {}).get("accountBalanceCNY", None)
                 check_token_logger.info(f"[{phone}] token有效（第 {attempt} 次）: {response_json}")
-                return 100
+                return 100, balance
             else:
                 check_token_logger.warning(f"[{phone}] token失效（第 {attempt} 次）: {response_json}")
-                return -1  # 已收到响应，但 token 无效，不重试
+                return -1, None  # 已收到响应，但 token 无效，不重试
 
         except requests.exceptions.RequestException as e:
             check_token_logger.error(f"[{phone}] 请求出错（第 {attempt} 次）: {e}")
             if attempt == max_retries:
-                return -2  # 重试后仍失败
+                return -2, None  # 重试后仍失败
 
         except ValueError as e:
             check_token_logger.error(f"[{phone}] 响应不是合法 JSON（第 {attempt} 次）: {e}")
-            return -3  # 响应格式不对，直接结束
+            return -3, None  # 响应格式不对，直接结束
 
-    return -2  # 全部重试后仍失败
+    return -2, None  # 全部重试后仍失败
 

@@ -24,22 +24,25 @@ weilai_robot/
 │   ├── __init__.py                
 │   ├── db.py                    # 数据库连接
 │   ├── user_dao.py              # 用户信息操作
-│   ├── task_dao.py              # 任务管理
-│   └── weilai.db               # db生成的数据库
+│   └── weilai.db                # db生成的数据库
 │
-├── service/                      # 数据目录（如日志、token、缓存等）
+├── service/                      # 方法目录（操作方法）
 │   ├── weilai/
+│   │   ├── check_token.py        #检查用户是否过期
+│   │   ├── get_task.py           #根据数据库取得任务数量并且整合数据
 │   │   ├── login.py              #未来登录脚本
-│   │   └── task.py               #未来任务脚本，后续应该还要拆分
-│   └── wx/                       # 微信监控操作目录
-│       ├── opration.py           #监控信息作出操作
-│       └── wechat.py              #微信监控
+│   │   ├── scheduler.py          #线程调度器,设置最大线程数
+│   │   └── task.py               #未来任务脚本
+│   └── wx/                       #微信监控操作目录
+│       ├── opration.py           #监控用户信息做出对应操作
+│       └── wechat.py             #微信监控
 │
-├── utils/                       # 工具类（如日志、网络请求封装、加解密）
-│   ├── request.py              # 请求
-│   └── logger.py                   #日志
+├── utils/                        #工具类（如日志、网络请求封装、加解密）
+│   ├── log/                      #不同任务对应的请求
+│   ├── request.py                #请求
+│   └── logger.py                 #日志
 │
 │
-├── main.py                      # 启动入口
-├── requirements.txt             # 所需依赖列表
-└── README.md                    # 项目说明文档
+├── main.py                       # 启动入口
+├── requirements.txt              # 所需依赖列表
+└── README.md                     # 项目说明文档
