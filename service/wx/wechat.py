@@ -1,87 +1,75 @@
-# service/wechat.py
-
 from wxauto import WeChat
 import time
 import re
+import hashlib
 from dao.user_dao import UserDao
 from accommon.constant import USER_COMMANDS
 from service.wx.operation import get_wx_msg
-from utils.logger import get_logger  # 导入自定义日志工具
+from utils.logger import get_logger
+
 loggers = get_logger()
 wx_chat_log = loggers['wx_chat']
-
 user_dao = UserDao()
 
+
 class WeChatService:
+
     def __init__(self, wait=3):
         self.wx = WeChat()
         self.user_list = []
         self.wait = wait
         self.running = False
+        self.last_msg_record = {}  # ✅ 添加：记录用户最近的消息摘要
+
+    def _get_msg_hash(self, msg_list):
+        """
+        将消息列表中提取的文本内容拼接后生成哈希值用于去重
+        """
+        text_list = []
+        for msg in msg_list:
+            try:
+                text_list.append(str(msg.content))  # 提取消息文本内容
+            except Exception as e:
+                wx_chat_log.warning(f"⚠️ 无法解析消息内容: {e}")
+                text_list.append("")
+
+        joined = '|'.join(text_list)
+        return hashlib.md5(joined.encode('utf-8')).hexdigest()
 
     def start(self):
         self.running = True
-        print("微信监听服务启动...")
+        wx_chat_log.info("✅ 微信监听服务启动...")
         try:
             while self.running:
                 try:
                     new_user = self.wx.GetNextNewMessage()
                     if new_user:
                         for raw_key, msg_list in new_user.items():
-                            try:
-                                clean_key = re.sub(r'\s*\(.*?\)', '', raw_key)
-                                is_friend = any(msg[0] != 'SYS' for msg in msg_list)
-                                if is_friend and clean_key not in self.user_list:
-                                    self.user_list.append(clean_key)
-                                    self.wx.AddListenChat(who=clean_key)
-                                    wx_chat_log.info(f'✅ 添加新用户【{clean_key}】到监听列表')
-                                    user = user_dao.get_user_by_wx_name(clean_key)
-                                    if user is None:
-                                        user_dao.insert_user(clean_key)
-                                    else:
-                                        wx_chat_log.warning(f'👤当前用户数据: {user}')
-                                    sender = msg_list[0].sender
-                                    wx_chat_log.warning(f'👤 <{sender.center(10, "-")}>：{msg_list[0].content}')
-                                    try:
-                                        result = get_wx_msg(clean_key, msg_list[0].content)
-                                    except Exception as e:
-                                        result = f"❌ 指令处理失败: {e}"
-                                        wx_chat_log.error(result)
+                            msg_hash = self._get_msg_hash(msg_list)
+                            last_hash = self.last_msg_record.get(raw_key)
 
-                                    self.wx.SendMsg(result, clean_key)
+                            # ✅ 判断是否为重复消息
+                            if last_hash == msg_hash:
+                                wx_chat_log.debug(f"🔁 忽略重复消息，来自: {raw_key}")
+                                continue  # 跳过本次
+
+                            # ✅ 保存新的 hash
+                            self.last_msg_record[raw_key] = msg_hash
+
+                            try:
+                                wx_chat_log.info(f"📨 收到新消息，来自 {raw_key}: {msg_list}")
+                                for item in msg_list:
+                                    if item.type !='friend':
+                                        continue
+                                    results = get_wx_msg(item.sender,item.content)
+                                    if results:
+                                        self.wx.SendMsg(results, raw_key)
                             except Exception as e:
                                 wx_chat_log.error(f'❌ 新用户消息处理失败: {e}')
-
-                    msgs = self.wx.GetListenMessage()
-                    for chat, one_msgs in msgs.items():
-                        if not one_msgs:
-                            continue
-                        for msg in one_msgs:
-                            try:
-                                if msg.type == 'sys':
-                                    wx_chat_log.info(f'📢【系统消息】{msg.content}')
-                                elif msg.type == 'friend':
-                                    sender = msg.sender
-                                    wx_chat_log.info(f'👤 <{sender.center(10, "-")}>：{msg.content}')
-                                    try:
-                                        result = get_wx_msg(sender, msg.content)
-                                    except Exception as e:
-                                        result = f"❌ 指令处理失败: {e}"
-                                        wx_chat_log.error(result)
-                                    chat.SendMsg(result)
-                                elif msg.type == 'self':
-                                    wx_chat_log.info(f'🗨️ <我自己>：{msg.content}')
-                                elif msg.type == 'time':
-                                    wx_chat_log.info(f'⏱️【时间消息】{msg.time}')
-                                elif msg.type == 'recall':
-                                    wx_chat_log.info(f'⚠️【撤回消息】{msg.content}')
-                            except Exception as e:
-                                wx_chat_log.error(f'❌ 单条消息处理失败: {e}')
-                except Exception as loop_err:
-                    wx_chat_log.error(f'❌ 循环内异常: {loop_err}')
-                time.sleep(self.wait)
-                wx_chat_log.info(f'当前监听用户列表 : {self.user_list}')
+                    time.sleep(self.wait)
+                except Exception as e:
+                    wx_chat_log.error(f'❌ 单次监听异常: {e}')
         except KeyboardInterrupt:
-            wx_chat_log.error('👋 微信监听服务停止')
+            wx_chat_log.warning('👋 微信监听服务手动停止')
         except Exception as e:
             wx_chat_log.error(f'❌ 监听主循环异常: {e}')

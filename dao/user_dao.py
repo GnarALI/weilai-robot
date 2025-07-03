@@ -6,11 +6,11 @@ import uuid
 class UserDao:
 
     # 新增用户
-    def insert_user(self, wx_name):
+    def insert_user(self, wx_name,phone,pwd):
         user_id = str(uuid.uuid4())
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO user (id, wx_name) VALUES (?, ?)', (user_id, wx_name))
+        cursor.execute('INSERT INTO user (id, wx_name,phone,pwd) VALUES (?,?,?,?)', (user_id, wx_name, phone, pwd))
         conn.commit()
         conn.close()
         return user_id
@@ -35,20 +35,20 @@ class UserDao:
         conn.close()
         return dict(zip(columns, row)) if row else None
 
-    # 根据微信名称更新支付密码
-    def update_pay_pwd_by_wx_name(self, wx_name, pay_pwd):
+    # 根据手机号更新支付密码
+    def update_pwd_by_phone(self, phone, pwd):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE user SET pay_pwd = ? WHERE wx_name = ?', (pay_pwd, wx_name))
+        cursor.execute('UPDATE user SET pwd = ? WHERE phone = ?', (pwd, phone))
         conn.commit()
         conn.close()
 
     # 更新 token
-    def update_token_by_wx_user(self, wx_name, token, expire_time, phone):
+    def update_token_by_phone(self,phone, token, expire_time ):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE user SET token = ?, expire_time = ?, phone = ? WHERE wx_name = ?',
-                       (token, expire_time, phone, wx_name))
+        cursor.execute('UPDATE user SET token = ?, expire_time = ? WHERE phone = ?',
+                       (token, expire_time, phone))
         conn.commit()
         conn.close()
 
@@ -57,6 +57,14 @@ class UserDao:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('DELETE FROM user WHERE phone = ?', (phone,))
+        conn.commit()
+        conn.close()
+
+    # 根据手机号更新余额
+    def update_balance_by_phone(self, phone, balance):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE user SET balance = ? WHERE phone = ?', (balance,phone ))
         conn.commit()
         conn.close()
 
@@ -93,22 +101,6 @@ class UserDao:
     def update_task_status100_by_phone(self, phone):
         self.update_task_status_by_phone(phone, 100)
 
-    # 按微信昵称更新任务状态为指定值
-    def update_task_status_by_wx_name(self, wx_name, status):
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute('UPDATE user SET task_status = ? WHERE wx_name = ?', (status, wx_name))
-        conn.commit()
-        conn.close()
-
-    # 按微信昵称更新任务状态为 0（未开始）
-    def update_task_status0_by_wx_name(self, wx_name):
-        self.update_task_status_by_wx_name(wx_name, 0)
-    def update_task_status1_by_wx_name(self, wx_name):
-        self.update_task_status_by_wx_name(wx_name, 1)
-    def update_task_status100_by_wx_name(self, wx_name):
-        self.update_task_status_by_wx_name(wx_name, 100)
-
     # 更新成功任务
     def update_success_task_by_phone(self, phone, success_task):
         conn = get_connection()
@@ -118,24 +110,24 @@ class UserDao:
         conn.close()
 
     # 设置任务信息
-    def update_task_by_wx_name(self, wx_name, task):
+    def update_task_by_phone(self, phone, task):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE user SET task = ? WHERE wx_name = ?', (task, wx_name))
+        cursor.execute('UPDATE user SET task = ? WHERE phone = ?', (task, phone))
         conn.commit()
         conn.close()
     #设置任务时间
-    def update_task_time_by_wx_name(self, wx_name, task_time):
+    def update_task_time_by_phone(self, phone, task_time):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE user SET task_time = ? WHERE wx_name = ?', (task_time, wx_name))
+        cursor.execute('UPDATE user SET task_time = ? WHERE phone = ?', (task_time, phone))
         conn.commit()
         conn.close()
 
     # 设置为vip
-    def update_is_vip_by_wx_name(self, wx_name):
+    def update_is_vip_by_phone(self, phone):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE user SET is_vip = 1 WHERE wx_name = ?', (wx_name,))
+        cursor.execute('UPDATE user SET is_vip = 1 WHERE phone = ?', (phone,))
         conn.commit()
         conn.close()

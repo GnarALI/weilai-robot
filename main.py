@@ -25,7 +25,6 @@ def main():
 
     # 启动调度器线程
     threading.Thread(target=poll_tasks, daemon=True).start()
-
     # poll_tasks()
 
     # 启动微信服务监听

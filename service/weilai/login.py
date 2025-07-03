@@ -7,7 +7,7 @@ import logging
 from utils import request
 
 
-def get_token_by_login(phone: str, sms: str) -> tuple:
+def login(phone: str, sms: str) -> tuple:
     """
     使用手机号和短信验证码登录，获取 token。
     返回值：
