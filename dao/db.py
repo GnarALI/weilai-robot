@@ -31,7 +31,8 @@ def init_db():
             is_vip INTEGER DEFAULT 0,       -- 是否是VIP用户（1 是，0 否）
             success_task TEXT,             -- 成功的任务 JSON 字符串
             balance REAL DEFAULT 0.00, -- 钱包余额，单位元
-            balance_position TEXT   --持仓情况
+            balance_position TEXT,   --持仓情况
+            all_balance_position REAL DEFAULT 0.00 --总持仓情况
         )
     ''')
 

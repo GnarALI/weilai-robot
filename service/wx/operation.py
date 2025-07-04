@@ -72,7 +72,7 @@ def get_wx_msg(wx_name, msg):
                 return "请先执行，橙心-1"
 
             status, results = asyncio.run(get_user_profit(phone, user["token"]))
-            user_dao.update_balance_position_by_phone(phone,results)
+
 
             if status!=100:
                 return f"状态错误，请重新登录"

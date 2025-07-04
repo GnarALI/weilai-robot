@@ -138,3 +138,10 @@ class UserDao:
         cursor.execute('UPDATE user SET balance_position = ? WHERE phone = ?', (balance_position, phone))
         conn.commit()
         conn.close()
+
+    def update_all_balance_position_by_phone(self, phone, price):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE user SET all_balance_position = ? WHERE phone = ?', (price, phone))
+        conn.commit()
+        conn.close()

@@ -1,9 +1,13 @@
 import asyncio
+from datetime import datetime
 import aiohttp
 from decimal import Decimal, InvalidOperation
 from utils.logger import get_logger
 from utils.request import generate_random_ipv4, DATA_BODY, DATA_BODY1, DATA_BODY2, DATA_BODY3
 from utils import request as request_util
+from dao.user_dao import UserDao
+
+user_dao = UserDao()
 
 loggers = get_logger()
 profit_logger = loggers['profit']
@@ -67,11 +71,27 @@ async def get_user_profit(phone: str, token: str):
                 total_price += c
                 total_no_fee_price+=d
 
+
+        user=user_dao.get_user_by_phone(phone)
+        if user is not None:
+            try:
+                balance = Decimal(str(user.get("balance", "0")))
+            except (TypeError, ValueError, InvalidOperation):
+                balance = Decimal("0")
+
+            total_profit += balance
+
         msg = (
-            f"[{phone}] 今日收益: {total_profit} 元（已去掉手续费）\n"
-            f"未去掉提现手续费的收益: {total_no_fee_price} 元\n"
-            f"今日持仓: {total_price} 元"
+            f"[{phone}] 今日收益:\n {total_price:.2f} 元（已去掉手续费）\n\n"
+            f"{total_no_fee_price:.2f} 元 （未去掉手续费）\n\n"
+            f"今日持仓: {total_profit:.2f} 元"
         )
+
+        # 更新仓位
+        user_dao.update_balance_position_by_phone(phone, msg)
+        #更新总资产
+
+        user_dao.update_all_balance_position_by_phone(phone, float(total_profit))
 
         profit_logger.info(msg)
         return 100, msg
@@ -116,7 +136,7 @@ async def get_user_profit2(session, phone: str, token: str, id2: str):
 
     status, data = await post_with_retry(session, url, data_body, headers, phone)
     if status != 100:
-        return status, Decimal("0"), Decimal("0")
+        return status, Decimal("0"), Decimal("0"), Decimal("0")
 
     try:
         trade_price = Decimal(str(data.get("tradePrice", "0")))
@@ -126,13 +146,24 @@ async def get_user_profit2(session, phone: str, token: str, id2: str):
         current_price = Decimal("0")
 
     item_id = data.get("id")
+    trade_date = data.get("tradeDate", "")
+
     status, fee = await get_user_profit3(session, phone, token, item_id, current_price)
     if status != 100:
-        return status, Decimal("0"), Decimal("0")
+        return status, Decimal("0"), Decimal("0"), Decimal("0")
 
-    profit = current_price - trade_price - fee
-    no_fee_profit=current_price - trade_price
-    return 100, profit, current_price,no_fee_profit
+    # 计算持有天数（从第二天开始计算）
+    holding_days = get_holding_days(trade_date)
+
+    if holding_days == 0:
+        profit = Decimal("0")
+        no_fee_profit = Decimal("0")
+    else:
+        profit = (current_price - trade_price - fee) / holding_days
+        no_fee_profit = (current_price - trade_price) / holding_days
+
+    return 100, current_price, profit, no_fee_profit
+    # ,持仓金额,当日收益，当日收益（不算手续费）
 
 
 async def get_user_profit3(session, phone: str, token: str, id3: str, price: Decimal):
@@ -153,3 +184,16 @@ async def get_user_profit3(session, phone: str, token: str, id3: str, price: Dec
         return 100, fee
     except (InvalidOperation, TypeError, ValueError):
         return -1, Decimal("0")
+
+
+def get_holding_days(trade_date_str: str):
+    """计算从 tradeDate 到今天的持有天数（不含购买当日）"""
+    try:
+        trade_date = datetime.strptime(trade_date_str[:10], "%Y-%m-%d")  # 只取日期部分
+        today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+        delta = (today - trade_date).days
+        return max(0, delta)  # 最少为 0 天
+    except Exception as e:
+        print(f"日期转换出错: {e}")
+        return 0
+
