@@ -3,7 +3,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from service.weilai.get_task import get_today_task_detail
+from service.weilai.buy.get_task import get_today_task_detail
 from dao.user_dao import UserDao
 from utils.logger import get_logger
 import subprocess
@@ -44,7 +44,7 @@ def monitor_resources():
         scheduler_log.error(f"[资源监控异常] {e}")
 
 def schedule_task(task: dict, repeat_count: int = 1):
-    from service.weilai.task import send_request  # 延迟导入
+    from service.weilai.buy.task import send_request  # 延迟导入
     now = datetime.now()
     task_time = task['task_time']
     delay = (task_time - now).total_seconds()

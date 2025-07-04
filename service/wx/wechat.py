@@ -1,9 +1,7 @@
 from wxauto import WeChat
 import time
-import re
 import hashlib
 from dao.user_dao import UserDao
-from accommon.constant import USER_COMMANDS
 from service.wx.operation import get_wx_msg
 from utils.logger import get_logger
 

@@ -131,3 +131,10 @@ class UserDao:
         cursor.execute('UPDATE user SET is_vip = 1 WHERE phone = ?', (phone,))
         conn.commit()
         conn.close()
+    #更新持仓结果
+    def update_balance_position_by_phone(self, phone, balance_position):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE user SET balance_position = ? WHERE phone = ?', (balance_position, phone))
+        conn.commit()
+        conn.close()

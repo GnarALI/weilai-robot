@@ -30,7 +30,8 @@ def init_db():
             task_status INTEGER DEFAULT 0, -- 任务状态（如: 0 未开始，1 进行中，100 已完成）
             is_vip INTEGER DEFAULT 0,       -- 是否是VIP用户（1 是，0 否）
             success_task TEXT,             -- 成功的任务 JSON 字符串
-            balance REAL DEFAULT 0.00 -- 钱包余额，单位元
+            balance REAL DEFAULT 0.00, -- 钱包余额，单位元
+            balance_position TEXT   --持仓情况
         )
     ''')
 

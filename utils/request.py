@@ -1,3 +1,4 @@
+import random
 
 headers = {
     "Content-Type": "application/json",
@@ -34,3 +35,15 @@ BASE_HEADERS = {
     "inner": "112223223",
     "Origin": "https://www.weilaiqiyuan.com"
 }
+
+def generate_random_ipv4():
+    return '.'.join(str(random.randint(0, 255)) for _ in range(4))
+
+
+DATA_BODY={ "marketType": 1, "name": "", "pageNum": 1, "pageSize": 999 }
+
+DATA_BODY1={ "collectionId": "", "pageNum": 1, "pageSize": 999, "propFlag": 0 }
+
+DATA_BODY2={ "id": "" }
+
+DATA_BODY3=[{ "collectionDetailId": "", "price": 0 }]

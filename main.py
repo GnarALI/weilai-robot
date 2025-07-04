@@ -1,7 +1,7 @@
 from dao.db import init_db
 from utils.logger import get_logger
 from service.wx.wechat import WeChatService
-from service.weilai.scheduler import poll_tasks  # ✅ 导入你刚改名的调度模块
+from service.weilai.buy.scheduler import poll_tasks  # ✅ 导入你刚改名的调度模块
 import threading
 
 

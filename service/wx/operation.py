@@ -1,10 +1,11 @@
-from accommon.constant import USER_COMMANDS, USER_TIP
-from service.weilai.login import login
-from service.weilai.check_token import check_login_token
-from service.weilai.get_price import get_user_task
+import asyncio
+
+from accommon.constant import USER_TIP
+from service.weilai.buy.login import login
+from service.weilai.buy.check_token import check_login_token
+from service.weilai.buy.get_price import get_user_task
 from dao.user_dao import UserDao
-import json
-import datetime
+from service.weilai.information.get_user_profit import get_user_profit
 from utils.logger import get_logger  # 导入自定义日志工具
 
 # 初始化日志系统
@@ -18,9 +19,9 @@ user_dao = UserDao()
 def get_wx_msg(wx_name, msg):
     msg = msg.strip()
 
-    if msg.startswith("橙心-"):
+    if msg.startswith("橙心-1"):
         try:
-            name,phone, u_code, pwd = msg.split("-")
+            name,num,phone, u_code, pwd = msg.split("-")
             user=user_dao.get_user_by_phone(phone)
             if user is None:
                 user_dao.insert_user(wx_name, phone,pwd)
@@ -54,6 +55,34 @@ def get_wx_msg(wx_name, msg):
         except Exception as e:
             weilai_log = f"设置优先用户失败，错误原因: {e}\n请稍后重试或联系管理员。"
             return weilai_log
+
+    elif msg.startswith("橙心-2"):
+        name,num,phone = msg.split("-")
+        try:
+            user = user_dao.get_user_by_phone(phone)
+            if user is None:
+                return "请先执行，橙心-1"
+
+            if user["token"] is None:
+                return "请先执行，橙心-1"
+
+            code, balance = check_login_token(phone, user["token"])
+
+            if code!=100:
+                return "请先执行，橙心-1"
+
+            status, results = asyncio.run(get_user_profit(phone, user["token"]))
+            user_dao.update_balance_position_by_phone(phone,results)
+
+            if status!=100:
+                return f"状态错误，请重新登录"
+            else:
+                return results
+        except Exception as e:
+            # 捕获所有异常，打印日志或详细错误
+            vip_log = f"设置优先用户失败，错误原因: {e}\n请稍后重试或联系管理员。"
+            wx_operation_log.error(vip_log)
+            return vip_log
 
     elif msg.startswith("橙心vip-"):
         phone = msg.split("-")

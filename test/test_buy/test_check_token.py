@@ -1,4 +1,4 @@
-from service.weilai.check_token import check_login_token
+from service.weilai.buy.check_token import check_login_token
 
 if __name__ == "__main__":
     # 替换为你自己的测试手机号和验证码
