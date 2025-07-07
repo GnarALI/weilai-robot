@@ -4,7 +4,7 @@ from utils.logger import get_logger  # 导入自定义日志工具
 from utils import request  #  utils/request.py 中统一管理
 from dao.user_dao import UserDao  # 导入用户数据库操作类
 import datetime
-
+from utils.request import generate_random_ipv4
 user_dao = UserDao()
 
 # 商品名称到 ID、价格的映射
@@ -20,8 +20,31 @@ get_task_log = loggers['get_task']
 
 
 # 获取今日所有可抢藏品的名称、ID 和价格
-def get_today_price():
-    data = {"pageSize": 100, "pageNum": 1, "productType": "BUYOUT","collectionType":"2","museumId":"-3"}
+def get_today_price(token: str):
+    fake_ip = generate_random_ipv4()
+
+    headers = request.headers.copy()
+    headers.update({
+        "Authorization": token,
+        "X-Token": token,
+        "X-Forwarded-For": fake_ip,
+        "CLIENT_IP": fake_ip,
+        "REMOTE_ADDR": fake_ip,
+        "Via": fake_ip
+    })
+    data = {
+        "collectionType": "1",
+        "copyrightFlag": "0",
+        "marketType": 1,
+        "museumId": "-3",
+        "name": "",
+        "pageNum": 1,
+        "pageSize": 1000,
+        "productType": "BUYOUT",
+        "recommend": "",
+        "seriesId": "-1",
+        "sort": "nc.create_datetime DESC"
+    }
     try:
         response = requests.post("https://www.weilaiqiyuan.com/core/collection/public/search", json=data, headers=headers)
         response.raise_for_status()
@@ -35,11 +58,11 @@ def get_today_price():
     except requests.exceptions.RequestException as e:
         get_task_log.error(f"请求出错: {e}")
         time.sleep(3)
-        get_today_price()
+        get_today_price(token)
     except ValueError as e:
         get_task_log.error(f"响应内容不是有效的 JSON 格式: {e}")
         time.sleep(3)
-        get_today_price()
+        get_today_price(token)
     # get_task_log.info(name_price)
 
 
@@ -57,7 +80,7 @@ def get_today_task_detail() -> list[dict]:
     for user in users:
         phone = user.get("phone")
         token = user.get("token")
-        pwd = user.get("pay_pwd")
+        pwd = user.get("pwd")
         is_vip = user.get("is_vip")
         task_time = user.get("task_time")
         task = user.get("task")  # json 字符串
@@ -79,7 +102,18 @@ def get_today_task_detail() -> list[dict]:
 
 # 解析任务数量
 def parse_tasks(task_lines: list[str]) -> list[dict]:
-    get_today_price()
+    # 从任意一行提取 token，这里取第一行
+    if task_lines:
+        first_line = task_lines[0]
+        try:
+            _, _, _,_,_,token = first_line.split("-", 5)
+        except ValueError:
+            get_task_log.error(f"暂无可执行的任务")
+            token = None
+    else:
+        token = None
+        get_task_log.error(f"暂无可执行的任务")
+    get_today_price(token)
     tasks = []
 
     for line in task_lines:

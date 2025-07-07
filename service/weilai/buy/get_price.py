@@ -1,29 +1,43 @@
 import json
 import time
 from datetime import datetime
-
 import requests
-
 from utils.logger import get_logger  # 导入自定义日志工具
 from utils import request  #  utils/request.py 中统一管理
 from dao.user_dao import UserDao
-
+from utils.request import generate_random_ipv4
 user_dao = UserDao()
-
 headers = request.headers
 
 # 初始化日志系统
 loggers = get_logger()
 get_task_log = loggers['get_task']
 # 获取今日所有可抢藏品的名称、ID 和价格
-def get_today_price():
+def get_today_price(token: str):
+    fake_ip = generate_random_ipv4()
+
+    headers = request.headers.copy()
+    headers.update({
+        "Authorization": token,
+        "X-Token": token,
+        "X-Forwarded-For": fake_ip,
+        "CLIENT_IP": fake_ip,
+        "REMOTE_ADDR": fake_ip,
+        "Via": fake_ip
+    })
     name_price = {}  # 例如：{'蛇来运转-Ⅰ代': '128.88'}
     data = {
-        "pageSize": 100,
-        "pageNum": 1,
-        "productType": "BUYOUT",
-        "collectionType": "2",
-        "museumId": "-3"
+            "collectionType": "1",
+            "copyrightFlag": "0",
+            "marketType": 1,
+            "museumId": "-3",
+            "name": "",
+            "pageNum": 1,
+            "pageSize": 1000,
+            "productType": "BUYOUT",
+            "recommend": "",
+            "seriesId": "-1",
+            "sort": "nc.create_datetime DESC"
     }
     try:
         response = requests.post("https://www.weilaiqiyuan.com/core/collection/public/search", json=data, headers=headers)
@@ -39,14 +53,14 @@ def get_today_price():
             name_price[name] = price
 
     except requests.exceptions.RequestException as e:
-        get_task_log.error(f"请求出错: {e}")
+        get_task_log.error(f"获取价格请求出错: {e}")
         time.sleep(3)
-        return get_today_price()
+        return get_today_price(token)
 
     except ValueError as e:
-        get_task_log.error(f"响应内容不是有效的 JSON 格式: {e}")
+        get_task_log.error(f"获取价格请求出错，响应内容不是有效的 JSON 格式: {e}")
         time.sleep(3)
-        return get_today_price()
+        return get_today_price(token)
 
 
 
@@ -95,7 +109,8 @@ def get_fixed_task_time():
     return f"{today} 14:59:57"
 
 def get_user_task(phone):
-    name_price = get_today_price()
+    user = user_dao.get_user_by_phone(phone)
+    name_price = get_today_price(user["token"])
     name_price = {name: price for name, price in name_price.items() if price >= 100}
 
     user = user_dao.get_user_by_phone(phone)

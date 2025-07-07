@@ -24,12 +24,12 @@ def main():
     init_db()
 
     # 启动调度器线程
-    threading.Thread(target=poll_tasks, daemon=True).start()
-    # poll_tasks()
+    # threading.Thread(target=poll_tasks, daemon=True).start()
+    poll_tasks()
 
     # 启动微信服务监听
-    wx_service = WeChatService(wait=3)
-    wx_service.start()
+    # wx_service = WeChatService(wait=3)
+    # wx_service.start()
 
 
 if __name__ == '__main__':

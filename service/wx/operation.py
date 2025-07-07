@@ -53,7 +53,7 @@ def get_wx_msg(wx_name, msg):
             return task
 
         except Exception as e:
-            weilai_log = f"设置优先用户失败，错误原因: {e}\n请稍后重试或联系管理员。"
+            weilai_log = f"操作失败，错误原因: {e}\n请稍后重试或联系管理员。"
             return weilai_log
 
     elif msg.startswith("橙心-2"):
@@ -91,7 +91,7 @@ def get_wx_msg(wx_name, msg):
             return "设为优先用户成功！"
         except Exception as e:
             # 捕获所有异常，打印日志或详细错误
-            vip_log = f"设置优先用户失败，错误原因: {e}\n请稍后重试或联系管理员。"
+            vip_log = f"操作失败，错误原因: {e}\n请稍后重试或联系管理员。"
             wx_operation_log.error(vip_log)
             return vip_log
 
