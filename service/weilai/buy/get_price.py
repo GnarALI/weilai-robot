@@ -65,34 +65,15 @@ def get_today_price(token: str):
 
 
     return name_price  # ✅ 返回格式如：{"藏品名": float价格}
-
-def generate_purchase_plan(balance: float, name_price: dict[str, float]) -> tuple[dict[str, int], str, float]:
-    sorted_items = sorted(name_price.items(), key=lambda x: x[1], reverse=True)
+# 根据用户钱包生成的对应任务，任务消息，
+def generate_purchase_plan(balance: float, name_price: dict[str, float]) -> tuple[dict[str, int], str]:
     purchase_plan = {}
-    total_spent = 0.0
 
-    while True:
-        bought_in_this_round = False
+    for name, price in name_price.items():
+        can_buy = int(balance // price) if price > 0 else 0
+        purchase_plan[name] = can_buy
 
-        for name, price in sorted_items:
-            if balance < price:
-                continue
-
-            already_bought = purchase_plan.get(name, 0)
-            can_buy = min(3 - already_bought, int(balance // price))
-
-            if can_buy <= 0:
-                continue
-
-            purchase_plan[name] = already_bought + can_buy
-            balance -= price * can_buy
-            total_spent += price * can_buy
-            bought_in_this_round = True
-
-        if not bought_in_this_round:
-            break
-
-    # 构造用户可读的 summary 字符串
+    # 构造 summary 字符串
     summary_lines = []
     for name, count in purchase_plan.items():
         price = name_price[name]
@@ -100,9 +81,10 @@ def generate_purchase_plan(balance: float, name_price: dict[str, float]) -> tupl
         summary_lines.append(line)
 
     plan_summary_str = "\n".join(summary_lines)
-    remaining_balance = round(balance, 2)
 
-    return purchase_plan, plan_summary_str, remaining_balance
+    return purchase_plan, plan_summary_str
+
+
 
 def get_fixed_task_time():
     today = datetime.now().strftime("%Y/%m/%d")
@@ -117,7 +99,7 @@ def get_user_task(phone):
 
     if user is not None:
         balance = float(user.get("balance") or 0)
-        task, task_msg, remaining_balance = generate_purchase_plan(balance, name_price)
+        task, task_msg = generate_purchase_plan(balance, name_price)
     else:
         return "未找到用户，无法生成任务"
 
@@ -140,7 +122,10 @@ def get_user_task(phone):
     results = (
         f"钱包余额：¥{balance:.2f} 元\n\n"
         f"本次抢购任务：\n{task_msg}\n\n"
-        f"预计抢购后剩余余额：¥{remaining_balance:.2f} 元"
     )
+
+    # 5.跟新抢购任务状态
+    user_dao.update_task_status0_by_phone(phone)
+
     return results
 

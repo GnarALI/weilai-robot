@@ -81,9 +81,9 @@ def poll_tasks():
                     scheduler_log.warning(f"[跳过任务] 超出时间范围: {task['phone']} 任务时间: {task_time}")
                     continue
 
-                is_vip = int(task.get("is_vip", 0))
-                repeat_count = 3 if is_vip == 1 else 1
-
+                # is_vip = int(task.get("is_vip", 0))
+                # repeat_count = 3 if is_vip == 1 else 1
+                repeat_count=1
                 schedule_task(task, repeat_count=repeat_count)
 
         except Exception as e:
